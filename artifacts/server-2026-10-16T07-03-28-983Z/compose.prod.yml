@@ -1,0 +1,13 @@
+services:
+  migrate:
+    build: !reset null
+    image: ${BACKEND_IMAGE:?Set the published backend image}
+  backend:
+    build: !reset null
+    image: ${BACKEND_IMAGE:?Set the published backend image}
+    environment:
+      NODE_ENV: production
+    volumes:
+      - type: bind
+        source: ${UPLOADS_PATH:-/srv/mandisetu/uploads}
+        target: /app/uploads

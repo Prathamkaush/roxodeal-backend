@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+enum KycStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  UNDER_REVIEW
+  ADDITIONAL_DOCUMENTS_REQUIRED
+  APPROVED
+  REJECTED
+}
+enum LeadStatus {
+  PENDING
+  ACTIVE
+  PARTIALLY_SOLD
+  FULLY_SOLD
+  CLOSED
+  REJECTED
+  EXPIRED
+}
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  phone String @unique
+  passwordHash String
+  name String
+  role Role @default(BUYER)
+  active Boolean @default(true)
+  phoneVerified Boolean @default(false)
+  emailVerified Boolean @default(false)
+  company String @default("")
+  city String @default("")
+  state String @default("")
+  address String @default("")
+  protectionEligible Boolean @default(true)
+  createdAt DateTime @default(now())
+  seller Seller?
+  leads Lead[]
+  payments Payment[]
+  documents Document[]
+  notifications Notification[]
+  claims Claim[]
+  audits AuditLog[]
+  sessions AuthSession[]
+  savedProducts SavedProduct[]
+  enquiries Enquiry[]
+  protections Protection[]
+  deliveries NoticeDelivery[]
+  feedback Feedback[]
+}
+model Seller {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields:[userId], references:[id])
+  company String
+  city String
+  state String
+  address String
+  pincode String
+  gst String?
+  pan String?
+  years Int @default(0)
+  kyc KycStatus @default(NOT_SUBMITTED)
+  kycNote String?
+  credits Int @default(0)
+  planId String?
+  plan Plan? @relation(fields:[planId], references:[id])
+  subscriptionExpiresAt DateTime?
+  categories SellerCategory[]
+  products Product[]
+  purchases LeadPurchase[]
+  claims Claim[]
+  enquiries Enquiry[]
+  protections Protection[]
+}
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  leadPrice Int @default(19900)
+  products Product[]
+  leads Lead[]
+  sellers SellerCategory[]
+}
+model SellerCategory {
+  sellerId String
+  categoryId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  category Category @relation(fields:[categoryId], references:[id])
+  @@id([sellerId, categoryId])
+}
+model Product {
+  id String @id @default(cuid())
+  name String
+  description String
+  categoryId String
+  category Category @relation(fields:[categoryId], references:[id])
+  sellerId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  price Int
+  moq Int
+  unit String
+  active Boolean @default(true)
+  specifications Json @default("{}")
+  subcategory String?
+  maximumPrice Int?
+  images String[]
+  createdAt DateTime @default(now())
+  @@index([categoryId, active])
+  savedBy SavedProduct[]
+}
+model Plan {
+  id String @id @default(cuid())
+  name String @unique
+  price Int
+  listingLimit Int
+  leadCredits Int
+  durationDays Int @default(30)
+  active Boolean @default(true)
+  sellers Seller[]
+}
+model Lead {
+  deletedAt DateTime?
+  id String @id @default(cuid())
+  buyerId String
+  buyer User @relation(fields:[buyerId], references:[id])
+  title String
+  categoryId String
+  category Category @relation(fields:[categoryId], references:[id])
+  quantity Int
+  unit String
+  budget Int
+  city String
+  description String
+  requiredBy DateTime
+  status LeadStatus @default(PENDING)
+  price Int @default(0)
+  maxSlots Int @default(5)
+  subcategory String?
+  documentIds String[] @default([])
+  createdAt DateTime @default(now())
+  purchases LeadPurchase[]
+  @@index([categoryId, status])
+}
+model LeadPurchase {
+  id String @id @default(cuid())
+  leadId String
+  lead Lead @relation(fields:[leadId], references:[id])
+  sellerId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  usedCredit Boolean
+  paymentId String? @unique
+  payment Payment? @relation(fields:[paymentId], references:[id])
+  createdAt DateTime @default(now())
+  @@unique([leadId, sellerId])
+}
+model Payment {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId], references:[id])
+  gatewayOrderId String? @unique
+  gatewayPaymentId String? @unique
+  amount Int
+  type String
+  targetId String
+  status PaymentStatus @default(PENDING)
+  refundRequired Boolean @default(false)
+  createdAt DateTime @default(now())
+  leadPurchase LeadPurchase?
+}
+model Document {
+  id String @id @default(cuid())
+  ownerId String
+  owner User @relation(fields:[ownerId], references:[id])
+  filename String
+  storageKey String @unique
+  mimeType String
+  purpose String
+  createdAt DateTime @default(now())
+}
+model Claim {
+  id String @id @default(cuid())
+  buyerId String
+  buyer User @relation(fields:[buyerId], references:[id])
+  sellerId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  dealReference String
+  explanation String
+  response String?
+  status String @default("UNDER_REVIEW")
+  amount Int
+  approvedAmount Int?
+  adminNote String?
+  refundReference String?
+  title String @default("")
+  protectionId String?
+  protection Protection? @relation(fields:[protectionId], references:[id])
+  documentIds String[]
+  createdAt DateTime @default(now())
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId], references:[id])
+  message String
+  read Boolean @default(false)
+  createdAt DateTime @default(now())
+  dedupeKey String? @unique
+}
+model CmsPage {
+  id String @id @default(cuid())
+  slug String @unique
+  title String
+  content String
+  seoDescription String?
+  updatedAt DateTime @updatedAt
+}
+model AuditLog {
+  id String @id @default(cuid())
+  actorId String
+  actor User @relation(fields:[actorId], references:[id])
+  action String
+  targetId String
+  details Json @default("{}")
+  createdAt DateTime @default(now())
+}
+model AuthSession {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId], references:[id])
+  refreshHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+model OtpChallenge {
+  id String @id @default(cuid())
+  phone String
+  hash String
+  attempts Int @default(0)
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([phone, createdAt])
+}
+model EmailVerificationChallenge {
+  id String @id @default(cuid())
+  email String
+  hash String
+  attempts Int @default(0)
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([email, createdAt])
+}
+model SavedProduct {
+  userId String
+  productId String
+  user User @relation(fields:[userId], references:[id])
+  product Product @relation(fields:[productId], references:[id])
+  @@id([userId, productId])
+}
+model Enquiry {
+  kind String @default("ENQUIRY")
+  quantity Int?
+  id String @id @default(cuid())
+  buyerId String
+  buyer User @relation(fields:[buyerId], references:[id])
+  sellerId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  productId String?
+  message String
+  response String?
+  createdAt DateTime @default(now())
+}
+model Protection {
+  id String @id @default(cuid())
+  buyerId String
+  buyer User @relation(fields:[buyerId], references:[id])
+  sellerId String
+  seller Seller @relation(fields:[sellerId], references:[id])
+  reference String
+  product String
+  quantity Int
+  dealAmount Int
+  fee Int
+  deliveryDate DateTime
+  terms String
+  documentIds String[]
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  claims Claim[]
+}
+model Setting {
+  key String @id
+  value Json
+}
+model NoticeDelivery {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId], references:[id])
+  subject String
+  message String
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([status,nextAttemptAt])
+}
+model ViewEvent {
+  id String @id @default(cuid())
+  sellerId String
+  productId String?
+  kind String
+  createdAt DateTime @default(now())
+  @@index([sellerId,createdAt])
+}
+
+model ContactMessage {
+  id String @id @default(cuid())
+  name String
+  email String
+  subject String
+  message String
+  createdAt DateTime @default(now())
+}
+model Feedback {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId], references:[id])
+  kind String
+  message String
+  rating Int?
+  sellerId String?
+  productId String?
+  targetKey String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, targetKey])
+  @@index([kind, sellerId, productId])
+}

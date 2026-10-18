@@ -1,0 +1,13 @@
+{
+  "verifiedAt": "2026-10-16T07:07:45.329Z",
+  "dockerImage": "mandisetu-backend:local",
+  "beforeBytes": 185783827,
+  "afterBytes": 138248684,
+  "reductionPercent": 25.6,
+  "regressionTests": 24,
+  "integration": "PASS: isolated PostgreSQL/Redis, auth, payment verification/webhooks, five-slot concurrency, KYC/evidence, cache privacy/invalidation, live session checks, submission limits, image ETag/304",
+  "runtime": "PASS: non-root, Prisma migration deploy, native Argon2 and Sharp",
+  "readiness": "healthy",
+  "serverArchive": "server-2026-10-16T07-03-28-983Z.tar.gz",
+  "archiveBytes": 82338
+}
